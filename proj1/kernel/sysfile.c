@@ -20,13 +20,14 @@ sys_calculate(void)
   int y;
   char* op;
   int result;
-  uint64 addr;
+  uint64 op_addr, result_addr;
 
   argint(0, &x);
   argint(1, &y);
-  argaddr(2, &addr);
+  argaddr(2, &op_addr);
+  argaddr(3, &result_addr);
 
-  if(copyin(p->pagetable, (char *)op, addr, sizeof(*op)) != 0)
+  if(copyin(p->pagetable, (char *)op, op_addr, sizeof(*op)) != 0)
     return -1;
 
   switch(op){
@@ -46,7 +47,7 @@ sys_calculate(void)
       return -1;
   }
 
-  if(copyout(p->pagetable, addr, &result, sizeof(result)) != 0){
+  if(copyout(p->pagetable, result_addr, (char*)&result, sizeof(result)) != 0){
     return -1;
   }
 
