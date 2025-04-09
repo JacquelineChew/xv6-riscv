@@ -7,5 +7,6 @@ int main(int argc, char *argv[]) {
   char op = '+'; 
   int error_code = calculate(10, 20, &op, &res); 
   printf("%d, %d\n", res, error_code); 
+  // printf("%d", error_code);
   exit(0); 
 } 

@@ -510,7 +510,7 @@ sys_calculate(void)
   struct proc *p = myproc();
   int x;
   int y;
-  char op;
+  char op[2];
   int result;
   uint64 op_addr, result_addr;
 
@@ -519,10 +519,10 @@ sys_calculate(void)
   argaddr(2, &op_addr);
   argaddr(3, &result_addr);
 
-  if(copyin(p->pagetable, (char *)&op, op_addr, sizeof(op)) < 0)
+  if(copyin(p->pagetable, (char *)op, op_addr, 2) < 0)
     return -1;
 
-  switch(op){
+  switch(op[0]){
     case '+':
       result = x + y;
       break;
