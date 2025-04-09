@@ -30,7 +30,7 @@ sys_calculate(void)
   if(copyin(p->pagetable, (char *)op, op_addr, sizeof(*op)) != 0)
     return -1;
 
-  switch(op){
+  switch(op[0]){
     case '+':
       result = x + y;
       break;
@@ -41,6 +41,7 @@ sys_calculate(void)
       result = x * y;
       break;
     case '/':
+      if(y == 0) return -1;
       result = x / y;
       break;
     default:
@@ -50,7 +51,6 @@ sys_calculate(void)
   if(copyout(p->pagetable, result_addr, (char*)&result, sizeof(result)) != 0){
     return -1;
   }
-
-
+  
   return 0;
 }
