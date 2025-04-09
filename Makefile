@@ -1,3 +1,6 @@
+include proj1/kernel/Makefile
+include proj1/user/Makefile
+
 K=kernel
 U=user
 
