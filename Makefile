@@ -1,6 +1,6 @@
 include proj1/kernel/Makefile
 include proj1/user/Makefile
-# include proj2/kernel/Makefile
+include proj2/kernel/Makefile
 # include proj2/user/Makefile
 
 
