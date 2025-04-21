@@ -1,43 +1,42 @@
-#include "types.h"
-#include "riscv.h"
-#include "defs.h"
-#include "param.h"
-#include "memlayout.h"
-#include "spinlock.h"
-#include "proc.h"
-
-int argint(int n, int *ip);
-int argaddr(int n, uint64 *ip);
-
-int sys_calculate(void) {
-  int x, y;
-  uint64 op_ptr, result_ptr;
-  char op;
+uint64
+sys_calculate(void)
+{
+  struct proc *p = myproc();
+  int x;
+  int y;
+  char op[2];
   int result;
+  uint64 op_addr, result_addr;
 
-  if (argint(0, &x) < 0 || argint(1, &y) < 0)
+  argint(0, &x);
+  argint(1, &y);
+  argaddr(2, &op_addr);
+  argaddr(3, &result_addr);
+
+  if(copyin(p->pagetable, (char *)op, op_addr, 2) < 0)
     return -1;
 
-  if (argaddr(2, &op_ptr) < 0 || argaddr(3, &result_ptr) < 0)
-    return -1;
-
-  if (copyin(myproc()->pagetable, &op, op_ptr, sizeof(char)) < 0)
-    return -1;
-
-  switch (op) {
-    case '+': result = x + y; break;
-    case '-': result = x - y; break;
-    case '*': result = x * y; break;
+  switch(op[0]){
+    case '+':
+      result = x + y;
+      break;
+    case '-':
+      result = x - y;
+      break;
+    case '*':
+      result = x * y;
+      break;
     case '/':
-      if (y == 0)
-        return -1;
-      result = x / y; break;
+      if(y == 0) return -1;
+      result = x / y;
+      break;
     default:
       return -1;
   }
 
-  if (copyout(myproc()->pagetable, result_ptr, (char *)&result, sizeof(int)) < 0)
+  if(copyout(p->pagetable, result_addr, (char*)&result, sizeof(result)) < 0){
     return -1;
-
+  }
+  
   return 0;
 }
