@@ -1,7 +1,7 @@
 include proj1/kernel/Makefile
 include proj1/user/Makefile
 include proj2/kernel/Makefile
-# include proj2/user/Makefile
+include proj2/user/Makefile
 
 
 K=kernel
@@ -146,7 +146,7 @@ UPROGS=\
 	$U/_wc\
 	$U/_zombie\
 	$U/_calc-test\
-	$U/_pipe-test\
+	proj2/$U/_pipe-test\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)
