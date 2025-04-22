@@ -86,7 +86,7 @@ void client(int write_fd, int read_fd, task_t *task) {
   }
 
   printf("Task %d: (%d %s %d). Received: %d, %d.\n", 
-    result_task.priority, result_task.x, result_task.op, result_task.y, result_task.result, result_task.error);
+    task.priority, task.x, task.op, task.y, result_task.result, result_task.error);
   
   exit(0);
 }
@@ -97,7 +97,7 @@ int main() {
   int pipe_res[2];
 
   // Use pipe system call to create pipe for client to server, and server to client
-  if (pipe(pipe_task) < 0 || pipe(pipe_res) < 0) {
+  if (pipe_rt(pipe_task) < 0 || pipe(pipe_res) < 0) {
     printf("Pipe creation failed.");
     exit(1);
   }
