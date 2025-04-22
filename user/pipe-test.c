@@ -5,6 +5,7 @@
 #include "user/user.h" 
 
 typedef struct task_t {
+  int priority;
   int x;
   int y;
   char* op; // Supports "+", "-", "*", "/"
@@ -36,32 +37,34 @@ void server(int read_fd, int write_fd) {
 
   printf("hello!\n");
 
-  // while (read(read_fd, &task, sizeof(task)) != sizeof(task)) {
-  //   // Action: execute calc();
-  //   printf("Client task: %d, %d, %c, %d\n",task.x, task.y, task.op, task.result);
-  //   task.error = calc(task.x, task.y, &task.op, &task.result);
+  while (read(read_fd, &task, sizeof(task)) == sizeof(task)) {
+    // Action: execute calc();
+    printf("Client task: %d, %d, %s, %d, %d\n",task.x, task.y, task.op, task.result, task.error);
+    
+    task.error = calc(task.x, task.y, task.op, &task.result);
 
-  //   // Action: write the result to write_fd; (send result back to client)
-  //   if (write(write_fd, &task, sizeof(task)) != sizeof(task)){
-  //     printf("Write syscall failed.");
+    // Action: write the result to write_fd; (send result back to client)
+    if (write(write_fd, &task, sizeof(task)) != sizeof(task)){
+      printf("Write syscall failed.");
+      exit(1);
+    }
+  }
+
+  // for (int i=0; i<4; i++){
+  //   if (read(read_fd, &task, sizeof(task)) != sizeof(task)) {
+  //     printf("Server: read failed\n");
+  //     exit(1);
+  //   }
+
+  //   printf("Client task: %d, %d, %s, %d, %d\n",task.x, task.y, task.op, task.result, task.error);
+
+  //   task.error = calc(task.x, task.y, task.op, &task.result);
+
+  //   if (write(write_fd, &task, sizeof(task)) != sizeof(task)) {
+  //     printf("Server: write failed\n");
   //     exit(1);
   //   }
   // }
-
-  // Read exactly one task
-  if (read(read_fd, &task, sizeof(task)) != sizeof(task)) {
-    printf("Server: read failed\n");
-    exit(1);
-  }
-
-  printf("Client task: %d, %d, %s, %d\n",task.x, task.y, task.op, task.result);
-
-  task.error = calc(task.x, task.y, task.op, &task.result);
-
-  if (write(write_fd, &task, sizeof(task)) != sizeof(task)) {
-    printf("Server: write failed\n");
-    exit(1);
-  }
   
   exit(0);
 }
@@ -76,13 +79,13 @@ void client(int write_fd, int read_fd, task_t *task) {
 
   // Action: read from read_fd and get result;
   task_t result_task;
-  if (read(read_fd, &result_task, sizeof(result_task)) != sizeof(result_task)){
+  if (read(read_fd, &result_task, sizeof(result_task)) < 0){
     printf("Read syscall failed.");
     exit(1);
   }
 
-  printf("Result from client task: %d, %d, %s, %d\n", 
-    result_task.x, result_task.y, result_task.op, result_task.result);
+  printf("Task %d: (%d %s %d). Received: %d, %d.\n", 
+    result_task.priority, result_task.x, result_task.op, result_task.y, result_task.result, result_task.error);
   
   exit(0);
 }
@@ -101,19 +104,31 @@ int main() {
   printf("pipe-task: %d, %d\n", pipe_task[0], pipe_task[1]);
   printf("pipe-res: %d, %d\n", pipe_res[0], pipe_res[1]);
 
-  if (fork() == 0) { // Client
-    close(pipe_task[0]);     // Close read end of client->server
-    close(pipe_res[1]);   // Close write end of server->client
+  task_t test_cases[] = {
+    {0, 10, 4, "-", 0, 0},
+    {0, 34, 9, "+", 0, 0},
+    {0, 56, 6, "&", 0, 0}, // Invalid operator
+    {0, 5, 0, "/", 0, 0},  // Division by zero
+  };
 
-    // Action: create a task;
-    task_t task = { .x = 5, .y = 3, .op = "*", .result = 0, .error = 0 };
+  for (int i=0; i<4; i++){
+    if (fork() == 0) { // Client
+      close(pipe_task[0]);     // Close read end of client->server
+      close(pipe_res[1]);   // Close write end of server->client
 
-    client(pipe_task[1], pipe_res[0], &task);
+      // Action: create a task;
+      //task_t task = { .x = 5, .y = 3, .op = "*", .result = 0, .error = 0 };
+      task_t task = test_cases[i];
+      task.priority = getpid();      // Set task priority
 
-    close(pipe_task[1]);     // Close write end of client->server
-    close(pipe_res[0]);   // Close read end of server->client
-    exit(0);
+      client(pipe_task[1], pipe_res[0], &task);
+
+      close(pipe_task[1]);     // Close write end of client->server
+      close(pipe_res[0]);   // Close read end of server->client
+      exit(0);
+    }
   }
+  
 
   // Server
   close(pipe_task[1]);     // Close write end of client->server

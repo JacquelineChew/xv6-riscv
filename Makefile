@@ -146,7 +146,7 @@ UPROGS=\
 	$U/_wc\
 	$U/_zombie\
 	$U/_calc-test\
-	$U/_client-server\
+	$U/_pipe-test\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)
