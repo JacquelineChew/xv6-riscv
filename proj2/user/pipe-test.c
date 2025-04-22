@@ -73,6 +73,8 @@ void server(int read_fd, int write_fd) {
 // Client sends calculation tasks to server, then reads back result
 void client(int write_fd, int read_fd, task_t *task) {
   // Action: write task to write_fd;
+  task_t client_task = *task;
+
   if (write(write_fd, task, sizeof(*task)) != sizeof(*task)){
     printf("Write syscall failed.");
     exit(1);
@@ -86,7 +88,7 @@ void client(int write_fd, int read_fd, task_t *task) {
   }
 
   printf("Task %d: (%d %s %d). Received: %d, %d.\n", 
-    task.priority, task.x, task.op, task.y, result_task.result, result_task.error);
+    client_task.priority, client_task.x, client_task.op, client_task.y, result_task.result, result_task.error);
   
   exit(0);
 }
