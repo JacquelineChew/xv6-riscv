@@ -6,8 +6,10 @@ typedef struct task_t {
   int  priority;
   int  x, y;
   char op;
-  int  result;
-  int  error;
+  int  act_result;
+  int  act_error;
+  int  exp_result;
+  int  exp_error;
 } task_t;
 
 typedef struct {
@@ -54,7 +56,7 @@ static void server(int rfd, int wfd) {
   task_t t;
 
   while (read(rfd, &t, sizeof t) == sizeof t) {
-    t.error = calc(t.x, t.y, t.op, &t.result);
+    t.act_error = calc(t.x, t.y, t.op, &t.act_result);
     write(wfd, &t, sizeof t);
   }
 
@@ -63,7 +65,7 @@ static void server(int rfd, int wfd) {
 
 static void client(int id, int wfd, int rfd, int logfd) {
   test_case tc = cases[id];
-  task_t t = { id, tc.x, tc.y, tc.op, 0, 0 };
+  task_t t = { id, tc.x, tc.y, tc.op, 0, 0, cases[id].expect_res, cases[id].expect_err};
 
   write(wfd, &t, sizeof t);     
   read(rfd, &t, sizeof t);      
@@ -79,15 +81,15 @@ static void client(int id, int wfd, int rfd, int logfd) {
   buf[len++] = ' '; buf[len++] = t.op; buf[len++] = ' ';
   int_to_str(buf + len, t.y); len = strlen(buf);
   strcpy(buf + len, "). Expected: "); len = strlen(buf);
-  int_to_str(buf + len, tc.expect_res); len = strlen(buf);
+  int_to_str(buf + len, t.exp_result); len = strlen(buf);
   strcpy(buf + len, ", "); len = strlen(buf);
-  int_to_str(buf + len, tc.expect_err); len = strlen(buf);
+  int_to_str(buf + len, t.exp_error); len = strlen(buf);
   strcpy(buf + len, ". Received: "); len = strlen(buf);
-  int_to_str(buf + len, t.result); len = strlen(buf);
+  int_to_str(buf + len, t.act_result); len = strlen(buf);
   strcpy(buf + len, ", "); len = strlen(buf);
-  int_to_str(buf + len, t.error); len = strlen(buf);
+  int_to_str(buf + len, t.act_error); len = strlen(buf);
   strcpy(buf + len, ". "); len = strlen(buf);
-  strcpy(buf + len, (t.result == tc.expect_res && t.error == tc.expect_err) ? "PASS\n" : "FAIL\n");
+  strcpy(buf + len, (t.act_result == t.exp_result && t.act_error == t.exp_error) ? "PASS\n" : "FAIL\n");
 
   write(logfd, buf, strlen(buf));
   close(logfd);

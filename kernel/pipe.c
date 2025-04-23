@@ -17,8 +17,10 @@ typedef struct task_t {
   int x;
   int y;
   char op; // Supports "+", "-", "*", "/"
-  int result;
-  int error;
+  int  act_result;
+  int  act_error;
+  int  exp_result;
+  int  exp_error;
 } task_t;
 
 struct pipe {
@@ -108,7 +110,7 @@ pipewrite(struct pipe *pi, uint64 addr, int n)
     return -1;
   }
   printf("[kernel] received task: priority=%d x=%d y=%d op=%d result=%d error=%d\n",
-    task.priority, task.x, task.y, task.op, task.result, task.error);
+    task.priority, task.x, task.y, task.op, task.act_result, task.act_error);
 
   if(pi->nwrite >= PIPESIZE){
     release(&pi->lock);
