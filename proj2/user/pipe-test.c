@@ -22,8 +22,8 @@ typedef struct {
 static test_case cases[] = {
   {10, 4, '-',  6,  0},
   {34, 9, '+', 43,  0},
-  {56, 6, '&',  0, -1},
-  { 5, 0, '/',  0, -1},
+  {56, 6, '&',  0, -1}, // Invalid operator
+  { 5, 0, '/',  0, -1}, // Division by zero
 };
 static int N = sizeof cases / sizeof cases[0];
 
@@ -39,6 +39,7 @@ calc(int a, int b, char op, int *out)
   }
 }
 
+// Used for printing task elements to file
 void int_to_str(char *buf, int x) {
   char tmp[16];
   int i = 0, j = 0, neg = 0;
@@ -52,6 +53,7 @@ void int_to_str(char *buf, int x) {
   buf[j] = '\0';
 }
 
+// Server calculates result for clients' tasks, then sends back to clients
 static void server(int rfd, int wfd) {
   task_t t;
 
@@ -63,15 +65,16 @@ static void server(int rfd, int wfd) {
   exit(0);
 }
 
+// Client sends calculation tasks to server, then reads back result
 static void client(int id, int wfd, int rfd, int logfd) {
   test_case tc = cases[id];
   task_t t = { id, tc.x, tc.y, tc.op, 0, 0, cases[id].expect_res, cases[id].expect_err};
 
-  write(wfd, &t, sizeof t);     
-  read(rfd, &t, sizeof t);      
+  write(wfd, &t, sizeof t);  // write to server
+
+  read(rfd, &t, sizeof t);   // read from server   
 
   char buf[128];
-  //char num[16];
   int len = 0;
 
   strcpy(buf, "Task "); len = 5;
@@ -92,14 +95,16 @@ static void client(int id, int wfd, int rfd, int logfd) {
   strcpy(buf + len, (t.act_result == t.exp_result && t.act_error == t.exp_error) ? "PASS\n" : "FAIL\n");
 
   write(logfd, buf, strlen(buf));
+
   close(logfd);
   exit(0);
 }
 
 int main(void) {
+  // Create two pipes for Client to Server, and Server to Client respectively
   int toSrv[2], fromSrv[2];
 
-  if (pipe_rt(toSrv) < 0 || pipe(fromSrv) < 0) {
+  if (pipe_rt(toSrv) < 0 || pipe(fromSrv) < 0) {  // Create pipe
     printf("pipe-test: cannot create pipes\n");
     exit(1);
   }
@@ -111,15 +116,20 @@ int main(void) {
   }
 
   for (int i = 0; i < N; i++) {
-    if (fork() == 0) {
+    if (fork() == 0) {  // Client
       close(toSrv[0]);
       close(fromSrv[1]);
+
       client(i, toSrv[1], fromSrv[0], dup(logfd));
     }
   }
-
+  // Server
   close(toSrv[1]);
   close(fromSrv[0]);
   server(toSrv[0], fromSrv[1]);
+
+  close(toSrv[0]);
+  close(fromSrv[1]);
+  wait(0);  // Wait for client processes to exit
   exit(0);
 }
