@@ -8,6 +8,7 @@
 #include "sleeplock.h"
 #include "file.h"
 
+
 #define PIPESIZE 512
 #define MAX_TASKS 64
 
@@ -15,7 +16,7 @@ typedef struct task_t {
   int priority;
   int x;
   int y;
-  char* op; // Supports "+", "-", "*", "/"
+  char op; // Supports "+", "-", "*", "/"
   int result;
   int error;
 } task_t;
@@ -106,6 +107,8 @@ pipewrite(struct pipe *pi, uint64 addr, int n)
     release(&pi->lock);
     return -1;
   }
+  printf("[kernel] received task: priority=%d x=%d y=%d op=%d result=%d error=%d\n",
+    task.priority, task.x, task.y, task.op, task.result, task.error);
 
   if(pi->nwrite >= PIPESIZE){
     release(&pi->lock);

@@ -1,147 +1,123 @@
-# include "../../kernel/types.h"
-# include "../../kernel/stat.h"
-# include "../../user/user.h"
-// #include "kernel/types.h"
-// #include "kernel/stat.h"
-// #include "user/user.h" 
+#include "kernel/types.h"
+#include "user/user.h"
+#include "kernel/fcntl.h"
 
 typedef struct task_t {
-  int priority;
-  int x;
-  int y;
-  char* op; // Supports "+", "-", "*", "/"
-  int result;
-  int error;
+  int  priority;
+  int  x, y;
+  char op;
+  int  result;
+  int  error;
 } task_t;
 
-int calc(int x, int y, char* op, int *result) {
-  // Action: calc task similar to the one in homework 1, but in the user space
+typedef struct {
+  int  x, y;
+  char op;
+  int  expect_res;
+  int  expect_err;
+} test_case;
 
-  switch (op[0]) {
-    case '+': *result = x + y; break;
-    case '-': *result = x - y; break;
-    case '*': *result = x * y; break;
-    case '/':
-      if (y == 0)
-        return -1;
-      *result = x / y; break;
-    default:
-      return -1;
+static test_case cases[] = {
+  {10, 4, '-',  6,  0},
+  {34, 9, '+', 43,  0},
+  {56, 6, '&',  0, -1},
+  { 5, 0, '/',  0, -1},
+};
+static int N = sizeof cases / sizeof cases[0];
+
+static int
+calc(int a, int b, char op, int *out)
+{
+  switch(op){
+    case '+': *out = a + b; return 0;
+    case '-': *out = a - b; return 0;
+    case '*': *out = a * b; return 0;
+    case '/': if (b == 0) return -1; *out = a / b; return 0;
+    default : return -1;
   }
-  return 0;
 }
 
-// Server calculates result for clients' tasks
-void server(int read_fd, int write_fd) {
+void int_to_str(char *buf, int x) {
+  char tmp[16];
+  int i = 0, j = 0, neg = 0;
+  if (x < 0) { neg = 1; x = -x; }
+  do {
+    tmp[i++] = '0' + (x % 10);
+    x /= 10;
+  } while (x);
+  if (neg) tmp[i++] = '-';
+  while (i--) buf[j++] = tmp[i];
+  buf[j] = '\0';
+}
 
-  task_t task;
+static void server(int rfd, int wfd) {
+  task_t t;
 
-  printf("hello!\n");
-
-  while (read(read_fd, &task, sizeof(task)) == sizeof(task)) {
-    // Action: execute calc();
-    printf("Client task: %d, %d, %s, %d, %d\n",task.x, task.y, task.op, task.result, task.error);
-    
-    task.error = calc(task.x, task.y, task.op, &task.result);
-
-    // Action: write the result to write_fd; (send result back to client)
-    if (write(write_fd, &task, sizeof(task)) != sizeof(task)){
-      printf("Write syscall failed.");
-      exit(1);
-    }
+  while (read(rfd, &t, sizeof t) == sizeof t) {
+    t.error = calc(t.x, t.y, t.op, &t.result);
+    write(wfd, &t, sizeof t);
   }
 
-  // for (int i=0; i<4; i++){
-  //   if (read(read_fd, &task, sizeof(task)) != sizeof(task)) {
-  //     printf("Server: read failed\n");
-  //     exit(1);
-  //   }
-
-  //   printf("Client task: %d, %d, %s, %d, %d\n",task.x, task.y, task.op, task.result, task.error);
-
-  //   task.error = calc(task.x, task.y, task.op, &task.result);
-
-  //   if (write(write_fd, &task, sizeof(task)) != sizeof(task)) {
-  //     printf("Server: write failed\n");
-  //     exit(1);
-  //   }
-  // }
-  
   exit(0);
 }
 
-// Client sends calculation tasks to server, then reads back result
-void client(int write_fd, int read_fd, task_t *task) {
-  // Action: write task to write_fd;
-  task_t client_task = *task;
+static void client(int id, int wfd, int rfd, int logfd) {
+  test_case tc = cases[id];
+  task_t t = { id, tc.x, tc.y, tc.op, 0, 0 };
 
-  if (write(write_fd, task, sizeof(*task)) != sizeof(*task)){
-    printf("Write syscall failed.");
-    exit(1);
-  }
+  write(wfd, &t, sizeof t);     
+  read(rfd, &t, sizeof t);      
 
-  // Action: read from read_fd and get result;
-  task_t result_task;
-  if (read(read_fd, &result_task, sizeof(result_task)) < 0){
-    printf("Read syscall failed.");
-    exit(1);
-  }
+  char buf[128];
+  //char num[16];
+  int len = 0;
 
-  printf("Task %d: (%d %s %d). Received: %d, %d.\n", 
-    client_task.priority, client_task.x, client_task.op, client_task.y, result_task.result, result_task.error);
-  
+  strcpy(buf, "Task "); len = 5;
+  int_to_str(buf + len, id); len = strlen(buf);
+  strcpy(buf + len, ": ("); len = strlen(buf);
+  int_to_str(buf + len, t.x); len = strlen(buf);
+  buf[len++] = ' '; buf[len++] = t.op; buf[len++] = ' ';
+  int_to_str(buf + len, t.y); len = strlen(buf);
+  strcpy(buf + len, "). Expected: "); len = strlen(buf);
+  int_to_str(buf + len, tc.expect_res); len = strlen(buf);
+  strcpy(buf + len, ", "); len = strlen(buf);
+  int_to_str(buf + len, tc.expect_err); len = strlen(buf);
+  strcpy(buf + len, ". Received: "); len = strlen(buf);
+  int_to_str(buf + len, t.result); len = strlen(buf);
+  strcpy(buf + len, ", "); len = strlen(buf);
+  int_to_str(buf + len, t.error); len = strlen(buf);
+  strcpy(buf + len, ". "); len = strlen(buf);
+  strcpy(buf + len, (t.result == tc.expect_res && t.error == tc.expect_err) ? "PASS\n" : "FAIL\n");
+
+  write(logfd, buf, strlen(buf));
+  close(logfd);
   exit(0);
 }
 
-int main() {
-  // Action: create two pipes for input and output respectively;
-  int pipe_task[2];
-  int pipe_res[2];
+int main(void) {
+  int toSrv[2], fromSrv[2];
 
-  // Use pipe system call to create pipe for client to server, and server to client
-  if (pipe_rt(pipe_task) < 0 || pipe(pipe_res) < 0) {
-    printf("Pipe creation failed.");
+  if (pipe_rt(toSrv) < 0 || pipe(fromSrv) < 0) {
+    printf("pipe-test: cannot create pipes\n");
     exit(1);
   }
 
-  printf("pipe-task: %d, %d\n", pipe_task[0], pipe_task[1]);
-  printf("pipe-res: %d, %d\n", pipe_res[0], pipe_res[1]);
+  int logfd = open("result.txt", O_CREATE | O_WRONLY);
+  if (logfd < 0) {
+    printf("pipe-test: cannot open result.txt\n");
+    exit(1);
+  }
 
-  task_t test_cases[] = {
-    {0, 10, 4, "-", 0, 0},
-    {0, 34, 9, "+", 0, 0},
-    {0, 56, 6, "&", 0, 0}, // Invalid operator
-    {0, 5, 0, "/", 0, 0},  // Division by zero
-  };
-
-  for (int i=0; i<4; i++){
-    if (fork() == 0) { // Client
-      close(pipe_task[0]);     // Close read end of client->server
-      close(pipe_res[1]);   // Close write end of server->client
-
-      // Action: create a task;
-      //task_t task = { .x = 5, .y = 3, .op = "*", .result = 0, .error = 0 };
-      task_t task = test_cases[i];
-      task.priority = getpid();      // Set task priority
-
-      client(pipe_task[1], pipe_res[0], &task);
-
-      close(pipe_task[1]);     // Close write end of client->server
-      close(pipe_res[0]);   // Close read end of server->client
-      exit(0);
+  for (int i = 0; i < N; i++) {
+    if (fork() == 0) {
+      close(toSrv[0]);
+      close(fromSrv[1]);
+      client(i, toSrv[1], fromSrv[0], dup(logfd));
     }
   }
-  
 
-  // Server
-  close(pipe_task[1]);     // Close write end of client->server
-  close(pipe_res[0]);   // Close read end of server->client
-
-  server(pipe_task[0], pipe_res[1]);
-
-  close(pipe_task[0]);
-  close(pipe_res[1]);
-
-  wait(0);  // Wait for client processes to exit
+  close(toSrv[1]);
+  close(fromSrv[0]);
+  server(toSrv[0], fromSrv[1]);
   exit(0);
 }
