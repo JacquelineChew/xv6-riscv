@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "../proj3/kernel/xv6timer.h"
 
 struct spinlock tickslock;
 uint ticks;
@@ -160,6 +161,7 @@ kerneltrap()
   w_sstatus(sstatus);
 }
 
+extern struct xv6timer_t mytimer;
 void
 clockintr()
 {
@@ -168,6 +170,7 @@ clockintr()
     ticks++;
     wakeup(&ticks);
     release(&tickslock);
+    xv6timer_interrupt(&mytimer);
   }
 
   // ask for the next timer interrupt. this also clears
