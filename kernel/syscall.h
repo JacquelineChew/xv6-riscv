@@ -22,3 +22,4 @@
 #define SYS_close  21
 #define SYS_calculate   22
 #define SYS_pipe_rt   23
+#define SYS_set_cpu_affinity  24

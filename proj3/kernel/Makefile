@@ -1,0 +1,1 @@
+OBJS += proj3/kernel/set-cpu-affinity.o

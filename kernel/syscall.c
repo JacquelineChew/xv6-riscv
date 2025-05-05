@@ -8,6 +8,7 @@
 #include "defs.h"
 #include "proj1/kernel/calculate.c"
 #include "proj2/kernel/pipe_rt.c"
+#include "proj3/kernel/set-cpu-affinity.c"
 
 // Fetch the uint64 at addr from the current process.
 int
@@ -105,6 +106,7 @@ extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
 extern uint64 sys_calculate(void);
 extern uint64 sys_pipe_rt(void);
+extern uint64 sys_set_cpu_affinity(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -132,6 +134,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_close]   sys_close,
 [SYS_calculate]    sys_calculate,
 [SYS_pipe_rt]    sys_pipe_rt,
+[SYS_set_cpu_affinity]    sys_set_cpu_affinity,
 };
 
 void
