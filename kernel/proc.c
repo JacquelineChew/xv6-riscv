@@ -457,7 +457,8 @@ scheduler(void)
     int found = 0;
     for(p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
-      if(p->state == RUNNABLE) {
+      // Process only runs on designated CPU included in cpu_mask; Or if cpu_mask == 0, no affinity
+      if(p->state == RUNNABLE && (p->cpu_mask == 0 || (p->cpu_mask & (1 << cpuid()))) ) {
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
