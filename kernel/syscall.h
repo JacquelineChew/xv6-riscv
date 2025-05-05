@@ -21,5 +21,7 @@
 #define SYS_mkdir  20
 #define SYS_close  21
 #define SYS_calculate   22
-#define SYS_pipe_rt   23
-#define SYS_set_cpu_affinity  24
+#define SYS_pipe_rt     23
+#define SYS_set_cpu_affinity        24
+#define SYS_setperiod               25
+#define SYS_wait_until_next_period  26

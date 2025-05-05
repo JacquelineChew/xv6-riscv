@@ -8,6 +8,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct xv6timer_t;
 
 // bio.c
 void            binit(void);

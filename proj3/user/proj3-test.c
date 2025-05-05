@@ -11,6 +11,9 @@ int main() {
     printf("Running on CPU %d\n", cpuid);
     sleep(100);
   }
+
+  setperiod(1);
+  wait_until_next_period();
   
   exit(0); 
 } 
