@@ -169,8 +169,8 @@ clockintr()
     acquire(&tickslock);
     ticks++;
     wakeup(&ticks);
-    release(&tickslock);
     xv6timer_interrupt(&mytimer);
+    release(&tickslock);
   }
 
   // ask for the next timer interrupt. this also clears

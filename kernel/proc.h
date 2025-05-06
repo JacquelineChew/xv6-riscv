@@ -107,14 +107,3 @@ struct proc {
   char name[16];               // Process name (debugging)
 };
 
-// Custom timer
-struct xv6timer_t; 
-   
-typedef void (*xv6timer_callback_t)(struct xv6timer_t *); 
-
-struct xv6timer_t { 
-  int expiry;    // Number of ticks between interrupts
-  uint next_tick;   // Tick count when the timer should trigger next 
-  struct proc *proc;   // Associated process  
-  void (*callback)(struct xv6timer_t *); // Callback function
-};
