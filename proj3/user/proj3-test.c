@@ -10,7 +10,7 @@ int main() {
   setperiod(10);
   while (1) {
     // printf("Running on CPU %d\n", cpuid);
-    printf("1 ");
+    printf("1 1 1 1 1 1 1 1 1 1\n");
     // sleep(50);
     wait_until_next_period();
   }

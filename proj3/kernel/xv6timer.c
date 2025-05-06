@@ -42,12 +42,7 @@ void xv6timer_interrupt(struct xv6timer_t *ptimer) {
 // Callback function wakes up process when interrupt is triggered
 void xv6timer_callback(struct xv6timer_t *ptimer) {
     struct proc *p = ptimer->proc;
-    acquire(&p->lock);
-    if (p->state == SLEEPING && p->chan == ptimer){ // If process is sleeping on the timer
-        p->state = RUNNABLE;
-        p->chan = 0;
-    }
-    release(&p->lock);
+    wakeup(p);
 
     xv6timer_forward(ptimer, ptimer->expiry);   // Reschedule next tick
 }
