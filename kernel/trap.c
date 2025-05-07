@@ -161,7 +161,8 @@ kerneltrap()
   w_sstatus(sstatus);
 }
 
-extern struct xv6timer_t mytimer;
+extern void xv6_timers_tick(void);  // declaration
+
 void
 clockintr()
 {
@@ -169,15 +170,14 @@ clockintr()
     acquire(&tickslock);
     ticks++;
     wakeup(&ticks);
-    xv6timer_interrupt(&mytimer);
+    xv6_timers_tick();  // 🔁 check all registered timers
     release(&tickslock);
   }
 
-  // ask for the next timer interrupt. this also clears
-  // the interrupt request. 1000000 is about a tenth
-  // of a second.
+  // Schedule next timer interrupt (approx. 0.1s later)
   w_stimecmp(r_time() + 1000000);
 }
+
 
 // check if it's an external interrupt or software interrupt,
 // and handle it.

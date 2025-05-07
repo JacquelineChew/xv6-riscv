@@ -153,6 +153,8 @@ UPROGS=\
 	$U/_client-server\
 	proj3/$U/_proj3-test\
 	proj3/$U/_timertest\
+	proj3/$U/_periodictest\
+
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

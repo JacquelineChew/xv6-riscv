@@ -5,8 +5,11 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "proj3/kernel/xv6timer.h"
 
 struct cpu cpus[NCPU];
+struct proc *periodic_procs[MAX_PERIODIC];
+int num_periodic = 0;
 
 struct proc proc[NPROC];
 
@@ -372,8 +375,14 @@ exit(int status)
 
   // Parent might be sleeping in wait().
   wakeup(p->parent);
-  
+
   acquire(&p->lock);
+
+  // Free associated timer if periodic
+  if (p->is_periodic && p->ptimer) {
+    free_timer(p->ptimer);
+    p->ptimer = 0;
+  }
 
   p->xstate = status;
   p->state = ZOMBIE;
@@ -444,42 +453,61 @@ wait(uint64 addr)
 void
 scheduler(void)
 {
-  struct proc *p;
   struct cpu *c = mycpu();
-
   c->proc = 0;
+
   for(;;){
-    // The most recent process to run may have had interrupts
-    // turned off; enable them to avoid a deadlock if all
-    // processes are waiting.
     intr_on();
 
-    int found = 0;
-    for(p = proc; p < &proc[NPROC]; p++) {
+    struct proc *best = 0;
+
+    // 1. Search for highest-priority (lowest period) periodic task
+    for(struct proc *p = proc; p < &proc[NPROC]; p++){
       acquire(&p->lock);
-      // Process only runs on designated CPU included in cpu_mask; Or if cpu_mask == 0, no affinity
-      if(p->state == RUNNABLE && (p->cpu_mask == 0 || (p->cpu_mask & (1 << cpuid()))) ) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
+      if(p->state == RUNNABLE && p->is_periodic &&
+         (p->cpu_mask == 0 || (p->cpu_mask & (1 << cpuid())))){
+        if(best == 0 || p->period < best->period){
+          if(best) release(&best->lock);  // unlock previous best
+          best = p;
+        } else {
+          release(&p->lock);
+        }
+      } else {
+        release(&p->lock);
+      }
+    }
+
+    if(best){
+      best->state = RUNNING;
+      c->proc = best;
+      swtch(&c->context, &best->context);
+      c->proc = 0;
+      release(&best->lock);
+      continue;  // loop again after switch
+    }
+
+    // 2. Fallback: round-robin for non-periodic processes
+    int found = 0;
+    for(struct proc *p = proc; p < &proc[NPROC]; p++){
+      acquire(&p->lock);
+      if(p->state == RUNNABLE && !p->is_periodic &&
+         (p->cpu_mask == 0 || (p->cpu_mask & (1 << cpuid())))){
         p->state = RUNNING;
         c->proc = p;
         swtch(&c->context, &p->context);
-
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
         c->proc = 0;
         found = 1;
       }
       release(&p->lock);
     }
-    if(found == 0) {
-      // nothing to run; stop running on this core until an interrupt.
+
+    if(!found){
       intr_on();
       asm volatile("wfi");
     }
   }
 }
+
 
 // Switch to scheduler.  Must hold only p->lock
 // and have changed proc->state. Saves and restores
