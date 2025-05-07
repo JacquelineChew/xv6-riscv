@@ -1,11 +1,11 @@
 uint64
 sys_setperiod(void)
 {
-  int ticks;
+  int ticks;  // Interval in ticks at which the process will wake up
   struct proc *p = myproc();
 
   argint(0, &ticks);
-  if (ticks < 1)
+  if (ticks < 1)  // If period is invalid
     return -1;
 
   if (p->is_periodic)
@@ -14,12 +14,12 @@ sys_setperiod(void)
   if (num_periodic >= MAX_PERIODIC)
     return -1;
 
-  // 🔧 Allocate a timer from the global timer pool
+  // Allocate a timer from the global timer pool
   struct xv6timer_t *ptimer = alloc_timer();
   if (!ptimer)
     return -1;  // No available timers
 
-  // Setup timer
+  // Associates a periodic timer with the calling process
   xv6timer_init(ptimer, p);
   xv6timer_register_callback(ptimer, xv6timer_callback);
   xv6timer_forward(ptimer, ticks);

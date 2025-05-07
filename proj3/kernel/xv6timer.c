@@ -7,8 +7,9 @@
 #include "kernel/proc.h"
 #include "xv6timer.h"
 
-extern uint ticks;  // from trap.c
-#define MAX_PERIODIC 4
+extern uint ticks;  // Defined in trap.c (Global tick count)
+
+#define MAX_PERIODIC 4    // Max number of periodic tasks
 static struct xv6timer_t timers[MAX_PERIODIC];
 static int timer_used[MAX_PERIODIC] = {0}; // 0 = free, 1 = used
 
@@ -37,20 +38,34 @@ void xv6timer_init(struct xv6timer_t *ptimer, struct proc *proc) {
 void xv6timer_forward(struct xv6timer_t *ptimer, int expiry) {
   ptimer->expiry = expiry;
   ptimer->next_tick = ticks + expiry;
+  //printf("xv6timer_forward: current tick %d, next tick set at %d\n", ticks, ptimer->next_tick);
 }
 
-// Register a callback for this timer
+// Register the timer with a callback which will be called when the time interrupt is triggered
 void xv6timer_register_callback(struct xv6timer_t *ptimer, xv6timer_callback_t cb) {
   ptimer->callback = cb;
 }
+
+// Calls the registered callback when the interrupt is triggered
+void xv6timer_interrupt(struct xv6timer_t *ptimer) {
+  if (ptimer->callback && ticks >= ptimer->next_tick) {  // Check if ticks expired
+    //printf("xv6timer_interrupt at tick %d\n", ticks);
+    ptimer->callback(ptimer);   // Call registered callback                  
+  }
+}
+
+// Callback function wakes up process when interrupt is triggered
+void xv6timer_callback(struct xv6timer_t *ptimer) {
+  struct proc *p = ptimer->proc;
+  wakeup(p);
+  xv6timer_forward(ptimer, ptimer->expiry); // Reschedule
+}  
 
 // Called every tick to check timers
 void xv6_timers_tick(void) {
   acquire(&timerlist.lock);
   for (struct xv6timer_t *t = timerlist.head; t != 0; t = t->next) {
-    if (t->callback && ticks >= t->next_tick) {
-      t->callback(t);
-    }
+    xv6timer_interrupt(t);
   }
   release(&timerlist.lock);
 }
@@ -72,17 +87,6 @@ void free_timer(struct xv6timer_t *t) {
       break;
     }
   }
-}
-
-// Default callback: wake up the sleeping process and reschedule
-void xv6timer_callback(struct xv6timer_t *ptimer) {
-  struct proc *p = ptimer->proc;
-  acquire(&p->lock);
-  if (p->state == SLEEPING)
-    p->state = RUNNABLE;
-  release(&p->lock);
-
-  xv6timer_forward(ptimer, ptimer->expiry); // Reschedule
 }
 
 

@@ -4,14 +4,13 @@
 
 int main() { 
   
-  //int cpuid = 1; 
-  //set_cpu_affinity(1 << cpuid);   /* pin the process to cpu 0 */
+  int cpuid = 1; 
+  set_cpu_affinity(1 << cpuid);   /* pin the process to cpu 1 */
+  printf("Running on CPU %d\n", cpuid);
 
   setperiod(10);
   while (1) {
-    // printf("Running on CPU %d\n", cpuid);
     printf("1 1 1 1 1 1 1 1 1 1\n");
-    // sleep(50);
     wait_until_next_period();
   }
   

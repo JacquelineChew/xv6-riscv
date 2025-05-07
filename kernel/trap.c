@@ -170,7 +170,7 @@ clockintr()
     acquire(&tickslock);
     ticks++;
     wakeup(&ticks);
-    xv6_timers_tick();  // 🔁 check all registered timers
+    xv6_timers_tick();  // check all registered timers
     release(&tickslock);
   }
 

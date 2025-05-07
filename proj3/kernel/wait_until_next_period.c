@@ -1,12 +1,12 @@
+struct spinlock sleeplock;
+
 uint64 
 sys_wait_until_next_period(void)
 {
-  struct proc *p = myproc();
-
-  acquire(&p->lock);
-  p->state = SLEEPING;
-  sched();  // yield CPU
-  release(&p->lock);
+  struct proc *p = myproc();  // Return current struct proc
+  acquire(&sleeplock);
+  sleep(p, &sleeplock);
+  release(&sleeplock);
 
   return 0;
 }
