@@ -9,8 +9,9 @@ void periodic_task(int period) {
   }
 
   while (1) {
-    printf("PID %d: running (period %d)\n", getpid(), period);
+    //printf("PID %d: running (period %d)\n", getpid(), period);
     wait_until_next_period();  // Sleep until next release
+    printf("PID %d: running (period %d)\n", getpid(), period);
   }
 }
 
@@ -26,13 +27,15 @@ int main() {
   // set_cpu_affinity(1 << cpuid);   /* pin the process to cpu 1 */
   // printf("Running on CPU %d\n", cpuid);
 
-  int periods[] = {5, 10, 15, 20};  // 4 valid periodic periods
+  int periods[] = {5, 13, 17, 36};  // 4 valid periodic periods
 
   // Create 5 processes (supports up to 4 periodic tasks)
   int i;
   for (i = 0; i < 5; i++) {
     if (fork() == 0) {
-      if (i < 4) periodic_task(periods[i]);
+      if (i < 4) {
+        periodic_task(periods[i]);
+      }
       else{
         // Attempt to start a 5th periodic task (should fail)
         printf("PID %d: attempting to become 5th periodic task\n", getpid());

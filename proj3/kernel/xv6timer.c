@@ -38,7 +38,8 @@ void xv6timer_init(struct xv6timer_t *ptimer, struct proc *proc) {
 void xv6timer_forward(struct xv6timer_t *ptimer, int expiry) {
   ptimer->expiry = expiry;
   ptimer->next_tick = ticks + expiry;
-  //printf("xv6timer_forward: current tick %d, next tick set at %d\n", ticks, ptimer->next_tick);
+  int pid = ptimer->proc->pid;
+  printf("PID %d: xv6timer_forward: current tick %d, next tick set at %d\n", pid, ticks, ptimer->next_tick);
 }
 
 // Register the timer with a callback which will be called when the time interrupt is triggered
@@ -49,7 +50,8 @@ void xv6timer_register_callback(struct xv6timer_t *ptimer, xv6timer_callback_t c
 // Calls the registered callback when the interrupt is triggered
 void xv6timer_interrupt(struct xv6timer_t *ptimer) {
   if (ptimer->callback && ticks >= ptimer->next_tick) {  // Check if ticks expired
-    //printf("xv6timer_interrupt at tick %d\n", ticks);
+    int pid = ptimer->proc->pid;
+    printf("PID %d: xv6timer_interrupt at tick %d\n", pid, ticks);
     ptimer->callback(ptimer);   // Call registered callback                  
   }
 }
