@@ -38,3 +38,5 @@ entry("sleep");
 entry("uptime");
 entry("calculate");
 entry("pipe_rt");
+entry("show_vm_areas");
+entry("shmget");

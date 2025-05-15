@@ -22,3 +22,5 @@
 #define SYS_close  21
 #define SYS_calculate   22
 #define SYS_pipe_rt   23
+#define SYS_show_vm_areas   24
+#define SYS_shmget    25
