@@ -12,7 +12,7 @@ sys_show_vm_areas(void)
 
   uint64 va_start = 0;
   uint64 va_end = 0;
-  int in_region = 0; // Indicate being inside within a memory-mapped area
+  int in_region = 0; // Indicate being within a memory-mapped area
   int num_pages = 0;
 
   for(uint64 va = 0; va < MAXVA; va += PGSIZE){

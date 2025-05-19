@@ -4,12 +4,14 @@
 #include "../../kernel/riscv.h"
 
 int main() { 
-
-  printf("MAXVA: %lx\n", MAXVA);
   
+  printf("Before shmget is called\n");
   show_vm_areas();
 
-  shmget(1,1);
+  shmget(0, 4096);
+
+  printf("\nAfter shmget is called\n");
+  show_vm_areas();
   
   exit(0); 
 }

@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "proj4/kernel/shm.h"
 
 struct cpu cpus[NCPU];
 
@@ -149,6 +150,27 @@ found:
   return p;
 }
 
+// Free shared memory when a process exits; Called by freeproc()
+void
+shmcleanup(pagetable_t pagetable) {
+  acquire(&shm_table.lock);
+  for (int i = 0; i < SHM_MAX_PAGES; i++) {
+    if (shm_table.pages[i].key != -1) {
+      uint64 va = SHMBASE + i * PGSIZE;
+      if (walkaddr(pagetable, va)) {
+        uvmunmap(pagetable, va, 1, 0); // don't free physical memory yet
+        shm_table.pages[i].refcount--;
+        if (shm_table.pages[i].refcount == 0) {
+          kfree((void *)shm_table.pages[i].pa);
+          shm_table.pages[i].key = -1;
+          shm_table.pages[i].pa = 0;
+        }
+      }
+    }
+  }
+  release(&shm_table.lock);
+}
+
 // free a proc structure and the data hanging from it,
 // including user pages.
 // p->lock must be held.
@@ -158,8 +180,10 @@ freeproc(struct proc *p)
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
-  if(p->pagetable)
+  if(p->pagetable) {
+    shmcleanup(p->pagetable);   // Added with HWK 4
     proc_freepagetable(p->pagetable, p->sz);
+  }
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;

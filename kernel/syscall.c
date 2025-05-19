@@ -6,6 +6,7 @@
 #include "proc.h"
 #include "syscall.h"
 #include "defs.h"
+#include "proj4/kernel/shm.h"
 #include "proj1/kernel/calculate.c"
 #include "proj2/kernel/pipe_rt.c"
 #include "proj4/kernel/show_vm_areas.c"
