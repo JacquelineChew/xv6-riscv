@@ -16,7 +16,7 @@ sys_shmget(void)
 
   acquire(&shm_table.lock);
 
-  // Search for existing entry
+  // Search for shared page identified by key
   struct shm_page *e = 0;
   for (int i = 0; i < SHM_MAX_PAGES; i++) {
     if (shm_table.pages[i].key == key) {
@@ -25,15 +25,16 @@ sys_shmget(void)
     }
   }
 
+  // If shared page in physical memory exists 
   if (e) {
     mappages(p->pagetable, va, PGSIZE, (uint64)e->pa, PTE_R | PTE_W | PTE_U);
     e->refcount++;
-  } else {
+  } else { // If not, create shared page in phys. mem. and map virtual pgs. to shared phys. page
     for (int i = 0; i < SHM_MAX_PAGES; i++) {
       if (shm_table.pages[i].key == -1) {
         e = &shm_table.pages[i];
         e->key = key;
-        e->pa = kalloc();
+        e->pa = kalloc(); // Allocate one page of phys. memory
         if (!e->pa) {
           release(&shm_table.lock);
           return -1;

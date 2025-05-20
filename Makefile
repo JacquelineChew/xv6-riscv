@@ -151,6 +151,7 @@ UPROGS=\
 	$U/_calc-test\
 	$U/_client-server\
 	proj4/$U/_memmap-test\
+	proj4/$U/_sm-ipc\
 
 
 fs.img: mkfs/mkfs README $(UPROGS)

@@ -8,7 +8,7 @@
 struct shm_page {
   int key;
   void *pa;  // Physical address
-  int refcount;
+  int refcount; // Record num of processes referencing shared page
 };
 
 struct shm_table_t{
