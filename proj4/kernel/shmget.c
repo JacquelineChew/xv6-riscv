@@ -29,7 +29,7 @@ sys_shmget(void)
   if (e) {
     mappages(p->pagetable, va, PGSIZE, (uint64)e->pa, PTE_R | PTE_W | PTE_U);
     e->refcount++;
-    printf("page found shmget: key %d pid %d mapped va %p to pa %p\n", key, p->pid, (void *)va, (void *)e->pa);
+    //printf("page found shmget: key %d pid %d mapped va %p to pa %p\n", key, p->pid, (void *)va, (void *)e->pa);
 
   } else { // If not, create shared page in phys. mem. and map virtual pgs. to shared phys. page
     for (int i = 0; i < SHM_MAX_PAGES; i++) {
@@ -44,7 +44,7 @@ sys_shmget(void)
         mappages(p->pagetable, va, PGSIZE, (uint64)e->pa, PTE_R | PTE_W | PTE_U);
         e->refcount = 1;
         e->key = key;
-        printf("page created shmget: key %d pid %d mapped va %p to pa %p\n",key, p->pid, (void *)va, (void *)e->pa);
+        //printf("page created shmget: key %d pid %d mapped va %p to pa %p\n",key, p->pid, (void *)va, (void *)e->pa);
         break;
       }
     }

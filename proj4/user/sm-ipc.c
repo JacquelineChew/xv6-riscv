@@ -10,6 +10,7 @@
 #define SHM_SIZE 4096
 
 typedef struct task_t {
+  int id; // ID of client sending task
   int x;
   int y;
   char op; // Supports "+", "-", "*", "/"
@@ -17,7 +18,7 @@ typedef struct task_t {
   int  act_error;
   int  exp_result;
   int  exp_error;
-  int status;
+  int status;   // synchronization flag: 0 = waiting, 1 = ready to read
 } task_t;
 
 typedef struct {
@@ -32,6 +33,14 @@ static test_case cases[] = {
   {34, 9, '+', 43,  0},
   {56, 6, '&',  0, -1}, // Invalid operator
   { 5, 0, '/',  0, -1}, // Division by zero
+  { 2, 3, '+',  5,  0},
+  { 7, 4, '-',  3,  0},
+  { 6, 2, '*',  12,  0},
+  {20, 3, '*', 60,  0},
+  {14, 2, '+', 16,  0},
+  {99, 3, '/', 33,  0},
+  { 1, 1, '+',  2,  0},
+  { 4, 8, 'e',  0, -1},
 };
 static int N = sizeof cases / sizeof cases[0];
 
@@ -67,52 +76,62 @@ void int_to_str(char *buf, int x) {
 }
 
 // Server calculates result for clients' tasks, then sends back to clients
-void server() {
-
+void server(int read_fd) {
+  
+  // Server allocates page in physical memory; Return va
   uint64 shmaddr = shmget(0, SHM_SIZE);
-  printf("Server PID %d: shm = %p\n", getpid(), (void *)shmaddr);
-
   if ((int)shmaddr == -1) {
     printf("server: shmget failed\n");
     exit(1);
   }
+  // shm points to start of shared page
+  task_t *shm = (task_t *)shmaddr; // Cast from uint64 to task_t pointer
 
-  task_t *shm = (task_t *)shmaddr;
-  int processed_count = 0;
+  show_vm_areas();  // VM areas after shmget is called
 
-  while (processed_count < N) {
-      for (int i = 0; i < N; i++) {
-        task_t *slot = &shm[i];
+  //printf("Server PID %d: shm = %p\n", getpid(), (void *)shmaddr);
 
-        if (slot->status == 1) {
-          // Action: execute calc();
-          slot->act_error = calc(slot->x, slot->y, slot->op, &slot->act_result);
-          slot->status = 2;
-          processed_count++;
-        }
-      }
-    }
+  task_t t;
+  while (read(read_fd, &t, sizeof(t)) == sizeof(t)) { // Read from pipe
+    t.act_error = calc(t.x, t.y, t.op, &t.act_result);
+
+    task_t *slot = &shm[t.id]; // Pointer to client's slot in shared page
+    printf("Client %d: Slot address %p\n", t.id, (void*)slot);
+    *slot = (task_t)t;   // Put task in slot
+    slot->status = 1;
+  }
+
   exit(0);
 }
   
 
 // Client sends calculation tasks to server, then reads back result
-void client(int id, int logfd) {
-  uint64 shmaddr = shmget(0, SHM_SIZE);
+void client(int id, int write_fd, int logfd) {
+  test_case tc = cases[id];
+  task_t t = { id, tc.x, tc.y, tc.op, 0, 0, cases[id].expect_res, cases[id].expect_err, 0};
+
+  // Write task through pipe
+  if (write(write_fd, &t, sizeof(t)) != sizeof(t)){
+    printf("Write syscall failed.");
+    exit(1);
+  }
+
+  // Clients allocate page to same place as server in physical memory; Return va
+  uint64 shmaddr = shmget(0, SHM_SIZE); 
   if ((int)shmaddr == -1) {
     printf("client %d: shmget failed\n", id);
     exit(1);
   }
+  // shm points to start of shared page
+  task_t *shm = (task_t *)shmaddr; // Cast from uint64 to task_t pointer
 
-  task_t *shm = (task_t *)shmaddr;
+  task_t *slot = &shm[id];  // Pointer to specific location (slot) in shared page
 
-  test_case tc = cases[id];
-  task_t *slot = &shm[id];
-  *slot = (task_t){tc.x, tc.y, tc.op, 0, 0, tc.expect_res, tc.expect_err, 0};
-  slot->status = 1;
+  // *slot = (task_t)t;
+  // slot->status = 1;
 
   // Wait for server to set result
-  while (slot->status != 2) {
+  while (slot->status != 1) {
     sleep(1);
   }
 
@@ -150,6 +169,13 @@ void client(int id, int logfd) {
 
 
 int main() {
+  // Create one pipe for Client to Server
+  int toSrv[2];
+
+  if (pipe(toSrv) < 0) {  // Create pipe
+    printf("main: cannot create pipes\n");
+    exit(1);
+  }
 
   int logfd = open("result.txt", O_CREATE | O_WRONLY);
   if (logfd < 0) {
@@ -157,23 +183,20 @@ int main() {
     exit(1);
   }
 
-  if (fork() == 0) {
-    server();
-  }
-
   // fork all clients
   for (int i = 0; i < N; i++) {
     if (fork() == 0) {  // Client
-      client(i, dup(logfd));
+      close(toSrv[0]);
+      client(i, toSrv[1], dup(logfd));
     }
   }
 
+  close(toSrv[1]);
+  server(toSrv[0]);
+
   close(logfd);
 
-  // Wait for N clients + server
-  for (int i = 0; i < N + 1; i++) {
-    wait(0);
-  }
+  wait(0);
 
   exit(0);
 }
