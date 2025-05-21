@@ -17,6 +17,7 @@ typedef struct task_t {
   int  act_error;
   int  exp_result;
   int  exp_error;
+  int status;
 } task_t;
 
 typedef struct {
@@ -66,38 +67,53 @@ void int_to_str(char *buf, int x) {
 }
 
 // Server calculates result for clients' tasks, then sends back to clients
-void server(int read_fd, int write_fd) {
-  task_t task;
+void server() {
 
-  while (read(read_fd, &task, sizeof(task)) == sizeof(task)) {
-    // Action: execute calc();
-    task.act_error = calc(task.x, task.y, task.op, &task.act_result);
+  uint64 shmaddr = shmget(0, SHM_SIZE);
+  printf("Server PID %d: shm = %p\n", getpid(), (void *)shmaddr);
 
-    // Action: write the result to write_fd; (send result back to client)
-    if (write(write_fd, &task, sizeof(task)) != sizeof(task)){
-      printf("Write syscall failed.");
-      exit(1);
-    }
+  if ((int)shmaddr == -1) {
+    printf("server: shmget failed\n");
+    exit(1);
   }
-  
+
+  task_t *shm = (task_t *)shmaddr;
+  int processed_count = 0;
+
+  while (processed_count < N) {
+      for (int i = 0; i < N; i++) {
+        task_t *slot = &shm[i];
+
+        if (slot->status == 1) {
+          // Action: execute calc();
+          slot->act_error = calc(slot->x, slot->y, slot->op, &slot->act_result);
+          slot->status = 2;
+          processed_count++;
+        }
+      }
+    }
   exit(0);
 }
+  
 
 // Client sends calculation tasks to server, then reads back result
-void client(int id, int write_fd, int read_fd, int logfd) {
-  test_case tc = cases[id];
-  task_t t = { tc.x, tc.y, tc.op, 0, 0, cases[id].expect_res, cases[id].expect_err};
-
-  // Action: write task to write_fd;
-  if (write(write_fd, &t, sizeof(t)) != sizeof(t)){
-    printf("Write syscall failed.");
+void client(int id, int logfd) {
+  uint64 shmaddr = shmget(0, SHM_SIZE);
+  if ((int)shmaddr == -1) {
+    printf("client %d: shmget failed\n", id);
     exit(1);
   }
 
-  // Action: read from read_fd and get result;
-  if (read(read_fd, &t, sizeof(t)) != sizeof(t)){
-    printf("Read syscall failed.");
-    exit(1);
+  task_t *shm = (task_t *)shmaddr;
+
+  test_case tc = cases[id];
+  task_t *slot = &shm[id];
+  *slot = (task_t){tc.x, tc.y, tc.op, 0, 0, tc.expect_res, tc.expect_err, 0};
+  slot->status = 1;
+
+  // Wait for server to set result
+  while (slot->status != 2) {
+    sleep(1);
   }
 
   // Write result to buffer (Debugging)
@@ -107,57 +123,57 @@ void client(int id, int write_fd, int read_fd, int logfd) {
   strcpy(buf, "Task "); len = 5;
   int_to_str(buf + len, id); len = strlen(buf);
   strcpy(buf + len, ": ("); len = strlen(buf);
-  int_to_str(buf + len, t.x); len = strlen(buf);
-  buf[len++] = ' '; buf[len++] = t.op; buf[len++] = ' ';
-  int_to_str(buf + len, t.y); len = strlen(buf);
+  int_to_str(buf + len, slot->x); len = strlen(buf);
+  buf[len++] = ' '; buf[len++] = slot->op; buf[len++] = ' ';
+  int_to_str(buf + len, slot->y); len = strlen(buf);
   strcpy(buf + len, "). Expected: "); len = strlen(buf);
-  int_to_str(buf + len, t.exp_result); len = strlen(buf);
+  int_to_str(buf + len, slot->exp_result); len = strlen(buf);
   strcpy(buf + len, ", "); len = strlen(buf);
-  int_to_str(buf + len, t.exp_error); len = strlen(buf);
+  int_to_str(buf + len, slot->exp_error); len = strlen(buf);
   strcpy(buf + len, ". Received: "); len = strlen(buf);
-  int_to_str(buf + len, t.act_result); len = strlen(buf);
+  int_to_str(buf + len, slot->act_result); len = strlen(buf);
   strcpy(buf + len, ", "); len = strlen(buf);
-  int_to_str(buf + len, t.act_error); len = strlen(buf);
+  int_to_str(buf + len, slot->act_error); len = strlen(buf);
   strcpy(buf + len, ". "); len = strlen(buf);
-  strcpy(buf + len, (t.act_result == t.exp_result && t.act_error == t.exp_error) ? "PASS\n" : "FAIL\n");
+  strcpy(buf + len, (slot->act_result == slot->exp_result && slot->act_error == slot->exp_error) ? "PASS\n" : "FAIL\n");
 
-  write(logfd, buf, strlen(buf));
+  int n = write(logfd, buf, strlen(buf));
+
+  if (n <= 0) {
+    printf("client %d: failed to write to result.txt\n", id);
+  }
 
   close(logfd);
-  
+
   exit(0);
 }
 
-int main() {
-  // Create two pipes for Client to Server, and Server to Client respectively
-  int toSrv[2], fromSrv[2];
 
-  if (pipe(toSrv) < 0 || pipe(fromSrv) < 0) {  // Create pipe
-    printf("pipe-test: cannot create pipes\n");
-    exit(1);
-  }
+int main() {
 
   int logfd = open("result.txt", O_CREATE | O_WRONLY);
   if (logfd < 0) {
-    printf("pipe-test: cannot open result.txt\n");
+    printf("main: cannot open result.txt\n");
     exit(1);
   }
 
+  if (fork() == 0) {
+    server();
+  }
+
+  // fork all clients
   for (int i = 0; i < N; i++) {
     if (fork() == 0) {  // Client
-      close(toSrv[0]);
-      close(fromSrv[1]);
-
-      client(i, toSrv[1], fromSrv[0], dup(logfd));
+      client(i, dup(logfd));
     }
   }
-  // Server
-  close(toSrv[1]);
-  close(fromSrv[0]);
-  server(toSrv[0], fromSrv[1]);
 
-  close(toSrv[0]);
-  close(fromSrv[1]);
-  wait(0);  // Wait for client processes to exit
+  close(logfd);
+
+  // Wait for N clients + server
+  for (int i = 0; i < N + 1; i++) {
+    wait(0);
+  }
+
   exit(0);
 }
