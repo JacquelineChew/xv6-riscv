@@ -38,3 +38,4 @@ entry("sleep");
 entry("uptime");
 entry("calculate");
 entry("pipe_rt");
+entry("getfilesize");

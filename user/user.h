@@ -24,6 +24,7 @@ int sleep(int);
 int uptime(void);
 int calculate(int, int, char*, int*);
 int pipe_rt(int*);
+int getfilesize(int*, char*);
 
 // ulib.c
 int stat(const char*, struct stat*);

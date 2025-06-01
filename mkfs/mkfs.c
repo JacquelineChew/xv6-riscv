@@ -132,6 +132,9 @@ main(int argc, char *argv[])
     char *shortname;
     if(strncmp(argv[i], "user/", 5) == 0)
       shortname = argv[i] + 5;
+    else if (strncmp(argv[i], "proj5/user/", 11) == 0){
+      shortname = argv[i] + 11;
+    }
     else
       shortname = argv[i];
     
