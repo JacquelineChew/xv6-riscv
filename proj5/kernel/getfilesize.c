@@ -1,3 +1,5 @@
+extern void _printk(const char *s);
+
 // Syscall returns the size of a file
 uint64
 sys_getfilesize(void)
@@ -11,6 +13,8 @@ sys_getfilesize(void)
     return -1;
   }
 
+  _printk("Calling getfilesize\n"); //_printk defined in klog.c
+
   struct inode *ip;
 
   begin_op(); // Mark start of FS system call
@@ -19,6 +23,7 @@ sys_getfilesize(void)
     printf("File not found.\n");
     return -1;
   }
+  
 
   ilock(ip);
   size = ip->size;  // Get size from inode struct

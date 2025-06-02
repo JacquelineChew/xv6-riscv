@@ -36,7 +36,8 @@ OBJS = \
   $K/sysfile.o \
   $K/kernelvec.o \
   $K/plic.o \
-  $K/virtio_disk.o
+  $K/virtio_disk.o \
+	proj5/$K/klog.o
 
 # riscv64-unknown-elf- or riscv64-linux-gnu-
 # perhaps in /opt/riscv/bin
@@ -150,6 +151,7 @@ UPROGS=\
 	$U/_calc-test\
 	$U/_client-server\
 	proj5/$U/_getsize-test\
+	proj5/$U/_dmesg\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

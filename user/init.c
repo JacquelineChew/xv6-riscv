@@ -23,6 +23,11 @@ main(void)
   dup(0);  // stdout
   dup(0);  // stderr
 
+  if(open("klog", O_RDWR) < 0){
+    mknod("klog", KLOG, 0);  // create device node with major device number KLOG
+    open("klog", O_RDWR);   // open it again after creating
+  }
+
   for(;;){
     printf("init: starting sh\n");
     pid = fork();
