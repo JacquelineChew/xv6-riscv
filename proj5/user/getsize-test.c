@@ -10,7 +10,7 @@ int main(int argc, char *argv[]) {
   } 
   int size; 
   if (getfilesize(&size, argv[1]) == 0) { 
-    // printf("File %s size: %d bytes\n", argv[1], size); 
+    printf("File %s size: %d bytes\n", argv[1], size); 
   } 
   else { 
     printf("Error: Could not get file size\n"); 
